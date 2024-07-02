@@ -55,7 +55,7 @@ jobs:
 #echo:環境変数をそのまま出力する、>をつけることで中身のファイルを作ることができる
 
       - name: Upload the image uri file as an artifact
-        uses: actions/upload-artifac@v2
+        uses: actions/upload-artifact@v2
         with:
           name: api-image-uri
           path: cicd-section/api/api-image-uri.txt
