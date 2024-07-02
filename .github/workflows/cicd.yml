@@ -4,7 +4,7 @@ on:
     branches:
       - main
     paths:
-      - 'github/workflows/**'
+      - '.github/workflows/**'
       - 'cicd-section/api/**'
 #GithubActionsのジョブを定義
 #cicd-section/api/の配下のディレクトリに変更があった場合のみ下記のjobを動かす
