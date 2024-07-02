@@ -51,4 +51,61 @@ jobs:
         run: |
           docker image tag temp_api_image:latest $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
           docker image push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+          echo $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} > api-image-uri.txt
+#echo:環境変数をそのまま出力する、>をつけることで中身のファイルを作ることができる
+
+      - name: Upload the image uri file as an artifact
+        uses: actions/upload-artifac@v2
+        with:
+          name: api-image-uri
+          path: cicd-section/api/api-image-uri.txt
+        #ECRのイメージURIをファイルに書き込む
 #Deploy
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [test-and-build]
+    #test-and-buildジョブが成功した場合のみ実行
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+
+      - name: Download the artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: api-image-uri
+          path: artifacts
+
+      - name: Define the image URI
+        run: |
+         echo "API_IMAGE_URI=$(cat artifacts/api-image-uri.txt)" >> $GITHUB_ENV
+#cat:ファイルの中身を表示する,$GITHUB_ENV:環境変数を設定する>>イメージを変数に落とし込む工程
+      
+      - name: Fill in the new image URI in the amazon ECS task definition
+        id: render-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ env.ECS_TASK_DEFINITION }}
+          container-name: api
+          image: ${{ env.API_IMAGE_URI }}
+          #ECSタスク定義のJSONファイルの中のイメージフィールドにイメージURIを挿入する
+
+      - name: Deploy ECS task
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.render-task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+          #ECSタスク定義をデプロイする
+
+
+
+
+
